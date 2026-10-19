@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kampanjblad</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: Arial, sans-serif; background:#e5e5e5; display:flex; }
+  #panel { width:380px; min-width:380px; height:100vh; overflow:auto; background:#fff; padding:14px; border-right:1px solid #ccc; }
+  #panel h2 { margin:14px 0 6px; font-size:16px; }
+  #panel label { display:block; font-size:12px; margin-top:6px; color:#444; }
+  #panel input[type=text], #panel input[type=number], #panel input[type=date], #panel select { width:100%; padding:6px; border:1px solid #bbb; border-radius:4px; }
+  #panel input[type=range] { width:100%; }
+  .row { display:flex; gap:6px; } .row > * { flex:1; }
+  button { padding:8px 10px; border:0; border-radius:4px; background:#e60000; color:#fff; cursor:pointer; font-weight:bold; margin-top:8px; }
+  button.grey { background:#666; }
+  .prod { border:1px solid #ddd; border-radius:6px; padding:8px; margin-top:8px; background:#fafafa; }
+  .pagebox { border:2px solid #e60000; border-radius:8px; padding:8px; margin-top:12px; }
+  .bgbox { background:#eef6ff; border-radius:4px; padding:4px 6px; margin-top:6px; }
+  #preview { flex:1; height:100vh; overflow:auto; padding:20px; }
+  .page { width:794px; height:1123px; background:#fff; margin:0 auto 20px; position:relative; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.3); font-family:'Arial Black', Arial, sans-serif; }
+  .rays { position:absolute; inset:0; background: repeating-conic-gradient(from 0deg at 50% 62%, #f2f2f2 0 10deg, #fff 10deg 20deg); }
+  .head { position:absolute; left:0; right:0; top:0; height:380px; background:#f50000; clip-path: polygon(0 0,100% 0,100% 48%,55% 100%,0 62%); }
+  .head::before { content:""; position:absolute; left:0; top:0; width:55%; height:100px; background:#b81016; clip-path: polygon(0 0,100% 0,0 100%); }
+  .title { position:absolute; top:70px; left:0; right:0; text-align:center; color:#ffd800; font-style:italic; font-weight:900; font-size:78px; line-height:.95; text-shadow:3px 3px 0 #b81016; }
+  .sub { position:absolute; top:285px; left:0; right:0; text-align:center; color:#ffd800; font-weight:bold; font-style:italic; font-size:20px; }
+  .logo { position:absolute; right:60px; top:270px; width:110px; height:110px; border-radius:50%; background:#000; color:#e11; font-weight:900; display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:44px; line-height:.9; }
+  .logo small { color:#1a9a3a; font-size:24px; }
+  .logo.hide { display:none; }
+  .grid { position:absolute; left:20px; right:20px; top:400px; bottom:20px; display:grid; gap:10px; }
+  .grid.n1 { grid-template-columns:1fr; }
+  .grid.n2 { grid-template-columns:1fr; grid-template-rows:1fr 1fr; }
+  .grid.n4 { grid-template-columns:1fr 1fr; grid-template-rows:1fr 1fr; }
+  .cell { position:relative; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .cell img { max-width:80%; max-height:90%; object-fit:contain; }
+  .badge { position:absolute; right:6%; bottom:10%; width:240px; min-height:200px; background:#ffc61e; color:#e60000; text-align:center;
+    clip-path: polygon(50% 0,60% 18%,78% 8%,78% 28%,100% 30%,88% 48%,100% 66%,80% 70%,82% 92%,62% 82%,50% 100%,40% 82%,20% 92%,22% 70%,0 66%,12% 48%,0 30%,22% 28%,22% 8%,40% 18%);
+    display:flex; flex-direction:column; align-items:center; justify-content:center; padding:30px 34px; }
+  .badge .price { font-size:36px; font-weight:900; line-height:1; }
+  .badge .old { font-size:13px; color:#222; text-decoration:line-through; font-family:Arial; font-weight:bold; margin-top:3px; }
+  .badge .extra { font-size:18px; font-weight:900; }
+  .badge .name { font-size:11px; color:#000; font-family:Arial; font-weight:bold; margin-top:4px; }
+  .n1 .badge { transform:scale(1.5); }
+  @media print {
+    body { display:block; background:#fff; }
+    #panel { display:none; }
+    #preview { padding:0; height:auto; overflow:visible; }
+    .page { box-shadow:none; margin:0; page-break-after:always; }
+    @page { size:794px 1123px; margin:0; }
+  }
+</style>
+</head>
+<body>
+<div id="panel">
+  <h1 style="margin:0;font-size:20px">Kampanjblad</h1>
+  <h2>Allmänt</h2>
+  <label>Rubrik</label><input type="text" id="title">
+  <div class="row">
+    <div><label>Från datum</label><input type="date" id="start"></div>
+    <div><label>Till datum</label><input type="date" id="end"></div>
+  </div>
+  <label>Vecka (tomt = automatiskt)</label><input type="number" id="week">
+  <label>Egen undertext (tomt = automatisk)</label><input type="text" id="subtext">
+  <label><input type="checkbox" id="showLogo"> Visa logga (24SJU)</label>
+  <h2>Sidor</h2>
+  <div id="pages"></div>
+  <button onclick="addPage()">+ Ny sida</button>
+  <button class="grey" onclick="window.print()">Skriv ut / spara PDF</button>
+  <button class="grey" onclick="if(confirm('Rensa allt?')){localStorage.removeItem('kb2');location.reload()}">Rensa allt</button>
+</div>
+<div id="preview"></div>
+
+<script>
+const MONTHS=['jan','feb','mar','apr','maj','jun','jul','aug','sep','okt','nov','dec'];
+let state = JSON.parse(localStorage.getItem('kb2')||'null');
+const procCache = new WeakMap(); // produkt -> bearbetad bild
+
+function isoWeek(d){
+  const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  const day=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day);
+  const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));
+  return Math.ceil(((t-y)/86400000+1)/7);
+}
+function iso(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function blank(){ return {img:'',rm:false,tol:30,name:'',type:'multi',qty:2,price:'',extra:'',old:'',showOld:true}; }
+if(!state){
+  const m=new Date(); m.setDate(m.getDate()-((m.getDay()||7)-1)); const s=new Date(m); s.setDate(s.getDate()+6);
+  state={title:'Veckans kampanjer',start:iso(m),end:iso(s),week:'',subtext:'',showLogo:true,pages:[{layout:4,products:[blank(),blank(),blank(),blank()]}]};
+}
+function save(){ try{localStorage.setItem('kb2',JSON.stringify(state));}catch(e){} }
+
+// Tar bort vit bakgrund genom att fylla från kanterna (vita ytor inuti produkten bevaras)
+function removeWhite(src, tol){
+  return new Promise(res=>{
+    const im=new Image();
+    im.onload=()=>{
+      const w=im.width,h=im.height, c=document.createElement('canvas'); c.width=w; c.height=h;
+      const x=c.getContext('2d'); x.drawImage(im,0,0);
+      const d=x.getImageData(0,0,w,h), a=d.data;
+      const near=i=>Math.max(255-a[i],255-a[i+1],255-a[i+2])<=tol || a[i+3]<10;
+      const seen=new Uint8Array(w*h), st=[];
+      const push=(px,py)=>{ if(px<0||py<0||px>=w||py>=h) return; const p=py*w+px; if(seen[p]) return; if(!near(p*4)) return; seen[p]=1; st.push(p); };
+      for(let i=0;i<w;i++){push(i,0);push(i,h-1);} for(let j=0;j<h;j++){push(0,j);push(w-1,j);}
+      while(st.length){ const p=st.pop(), px=p%w, py=(p-px)/w; push(px+1,py);push(px-1,py);push(px,py+1);push(px,py-1); }
+      for(let p=0;p<w*h;p++) if(seen[p]) a[p*4+3]=0;
+      // mjuka kanter
+      for(let py=1;py<h-1;py++) for(let px=1;px<w-1;px++){
+        const p=py*w+px; if(seen[p]) continue;
+        if(seen[p-1]||seen[p+1]||seen[p-w]||seen[p+w]){
+          const i=p*4, dist=Math.max(255-a[i],255-a[i+1],255-a[i+2]);
+          if(dist<tol*2.2) a[i+3]=Math.min(a[i+3],110);
+        }
+      }
+      x.putImageData(d,0,0); res(c.toDataURL('image/png'));
+    };
+    im.src=src;
+  });
+}
+let timers=new WeakMap();
+async function updateProc(pr){
+  if(pr.rm && pr.img) procCache.set(pr, await removeWhite(pr.img, +pr.tol));
+  else procCache.delete(pr);
+  render();
+}
+function schedule(pr){ clearTimeout(timers.get(pr)); timers.set(pr,setTimeout(()=>updateProc(pr),150)); }
+
+function bindGeneral(){
+  for(const k of ['title','start','end','week','subtext']){ const el=document.getElementById(k); el.value=state[k]??''; el.oninput=()=>{state[k]=el.value;render();}; }
+  const l=document.getElementById('showLogo'); l.checked=state.showLogo; l.onchange=()=>{state.showLogo=l.checked;render();};
+}
+function addPage(){ state.pages.push({layout:4,products:[blank(),blank(),blank(),blank()]}); build(); }
+function delPage(i){ state.pages.splice(i,1); build(); }
+function setLayout(i,n){ const p=state.pages[i]; p.layout=+n; while(p.products.length<p.layout) p.products.push(blank()); build(); }
+function loadImg(pr,file){
+  if(!file) return;
+  const r=new FileReader();
+  r.onload=()=>{ const im=new Image(); im.onload=()=>{
+    const c=document.createElement('canvas'); const s=Math.min(1,700/Math.max(im.width,im.height));
+    c.width=im.width*s; c.height=im.height*s; c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+    pr.img=c.toDataURL('image/png'); updateProc(pr);
+  }; im.src=r.result; };
+  r.readAsDataURL(file);
+}
+
+function build(){
+  const box=document.getElementById('pages'); box.innerHTML='';
+  state.pages.forEach((p,i)=>{
+    const d=document.createElement('div'); d.className='pagebox';
+    d.innerHTML=`<b>Sida ${i+1}</b> <select data-l style="width:auto"><option value="1">1 produkt</option><option value="2">2 produkter</option><option value="4">4 produkter</option></select>
+      <button class="grey" style="padding:4px 8px" data-del>Ta bort sida</button>`;
+    const sel=d.querySelector('[data-l]'); sel.value=p.layout; sel.onchange=()=>setLayout(i,sel.value);
+    d.querySelector('[data-del]').onclick=()=>delPage(i);
+    p.products.slice(0,p.layout).forEach((pr,j)=>{
+      const q=document.createElement('div'); q.className='prod';
+      q.innerHTML=`<b>Produkt ${j+1}</b>
+        <label>Bild</label><input type="file" accept="image/*">
+        <div class="bgbox"><label style="margin:0"><input type="checkbox" data-bg> Ta bort vit bakgrund</label>
+          <label>Känslighet: <span data-tv></span></label><input type="range" min="5" max="90" data-tol></div>
+        <label>Namn / beskrivning</label><input type="text" data-k="name">
+        <div class="row">
+          <div><label>Prisformat</label><select data-k="type"><option value="multi">X för Y kr</option><option value="each">Y kr/st</option><option value="kg">Y kr/kg</option><option value="plain">Y kr</option></select></div>
+          <div><label>Antal (X)</label><input type="number" data-k="qty"></div>
+          <div><label>Pris (Y)</label><input type="text" data-k="price"></div>
+        </div>
+        <label>Extra text (t.ex. + pant)</label><input type="text" data-k="extra">
+        <label>Ordinarie pris</label><input type="text" data-k="old" placeholder="t.ex. 29,90">
+        <label><input type="checkbox" data-k="showOld"> Visa ordinarie pris</label>`;
+      q.querySelector('input[type=file]').onchange=e=>loadImg(pr,e.target.files[0]);
+      const bg=q.querySelector('[data-bg]'), tol=q.querySelector('[data-tol]'), tv=q.querySelector('[data-tv]');
+      bg.checked=pr.rm; tol.value=pr.tol; tv.textContent=pr.tol;
+      bg.onchange=()=>{pr.rm=bg.checked; updateProc(pr);};
+      tol.oninput=()=>{pr.tol=+tol.value; tv.textContent=pr.tol; schedule(pr);};
+      q.querySelectorAll('[data-k]').forEach(el=>{
+        const k=el.dataset.k; if(el.type==='checkbox') el.checked=pr[k]; else el.value=pr[k];
+        el.oninput=el.onchange=()=>{ pr[k]=el.type==='checkbox'?el.checked:el.value; render(); };
+      });
+      d.appendChild(q);
+    });
+    box.appendChild(d);
+  });
+  render();
+}
+
+function fmtDate(s){ if(!s) return ''; const d=new Date(s+'T00:00'); return d.getDate()+' '+MONTHS[d.getMonth()]; }
+function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function priceText(p){
+  const y=esc(p.price); if(!y) return '';
+  if(p.type==='multi') return `${esc(p.qty)} för<br>${y} kr`;
+  if(p.type==='each') return `${y} kr<br>/st`;
+  if(p.type==='kg') return `${y} kr<br>/kg`;
+  return `${y} kr`;
+}
+function render(){
+  const w = state.week || (state.start? isoWeek(new Date(state.start+'T00:00')) : '');
+  const sub = state.subtext || `V${w} (${fmtDate(state.start)} - ${fmtDate(state.end)})`;
+  const pv=document.getElementById('preview'); pv.innerHTML='';
+  state.pages.forEach(p=>{
+    const items=p.products.slice(0,p.layout).map(pr=>{
+      const src=procCache.get(pr)||pr.img;
+      return `<div class="cell">${src?`<img src="${src}">`:''}
+        ${pr.price?`<div class="badge"><div class="price">${priceText(pr)}</div>
+          ${pr.extra?`<div class="extra">${esc(pr.extra)}</div>`:''}
+          ${pr.showOld&&pr.old?`<div class="old">Ord. pris ${esc(pr.old)} kr</div>`:''}
+          <div class="name">${esc(pr.name)}</div></div>`:''}</div>`;}).join('');
+    pv.insertAdjacentHTML('beforeend',`<div class="page"><div class="rays"></div><div class="head"></div>
+      <div class="title">${esc(state.title)}</div><div class="sub">${esc(sub)}</div>
+      <div class="logo ${state.showLogo?'':'hide'}">24<small>SJU</small></div>
+      <div class="grid n${p.layout}">${items}</div></div>`);
+  });
+  save();
+}
+bindGeneral(); build();
+state.pages.forEach(p=>p.products.forEach(pr=>{ if(pr.rm&&pr.img) updateProc(pr); }));
+</script>
+</body>
+</html>
